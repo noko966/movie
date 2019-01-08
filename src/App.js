@@ -1,78 +1,48 @@
 import React, { Component } from 'react';
-import $ from 'jquery';
-import { createGlobalStyle } from 'styled-components';
-
+import GlobalStyle from './styles/reset'
 import { connect } from 'react-redux';
-
-
 import Wrapper from './components/centeredWrapper';
 import Movie from './components/movie';
 import Header from './components/header';
 import Button from './button'
 
-const GlobalStyle = createGlobalStyle`
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed,
-figure, figcaption, footer, header, hgroup,
-main, menu, nav, output, ruby, section, summary,
-time, mark, audio, video {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 100%;
-  font: inherit;
-  vertical-align: baseline;
-}
-/* HTML5 display-role reset for older browsers */
-article, aside, details, figcaption, figure,
-footer, header, hgroup, main, menu, nav, section {
-  display: block;
-}
-/* HTML5 hidden-attribute fix for newer browsers */
-*[hidden] {
-    display: none;
-}
-*{
-  box-sizing: border-box;
-}
-body {
-  line-height: 1;
-}
-ol, ul {
-  list-style: none;
-}
-blockquote, q {
-  quotes: none;
-}
-blockquote:before, blockquote:after,
-q:before, q:after {
-  content: '';
-  content: none;
-}
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-    
-`;
+
 
 class App extends Component {
 
-  constructor(props){
-    super(props)
-    this.state = {}
+
+  handleChange = (e) => {
+    this.makeAjaxRequest(e.target.value);
   }
 
-  handleSearch = (e) => {
-    this.performSearch(e.target.value);
+  handeKeyDown = (e) => {
+    
+    if(e.keyCode === 13){
+    this.makeAjaxRequest(e.target.value);
+    }
+    // e.preventDefault();
+    // this.makeAjaxRequest(e.target.value);
+  }
+
+  makeAjaxRequest = (keyword) => {
+    if(!keyword){
+      this.props.queryProblem('empty string entered');
+      return
+    }
+    fetch('https://api.themoviedb.org/3/search/movie?query='+ keyword +'&api_key=ef29a7acd8e976cdf8a796acdc31056d')
+      .then(res => res.json())
+      .then(
+        (result) => {
+          if(result.results.length < 1){
+            this.props.queryProblem('no result');
+            return
+          }
+          this.props.queryMovies(result)
+        },
+        (error) => {
+          console.log(error)
+        }
+      )
   }
 
   login = () => {
@@ -83,36 +53,17 @@ class App extends Component {
     this.props.setLogin(false)
   }
 
-
-  performSearch(term){
-    const urlString='https://api.themoviedb.org/3/search/movie?query='+ term +'&api_key=ef29a7acd8e976cdf8a796acdc31056d';
-    $.ajax({
-      url: urlString,
-      success: (searchResults) => {
-        console.log('fetched succesfully');
-        console.log(searchResults);
-        const results = searchResults.results;
-
-        var movieRows = [];
-
-        results.forEach(movie => {
-          const movieRow =
-          <Movie movie = {movie}/>
-          movieRows.push(movieRow);
-        });
-
-        this.setState({rows: movieRows})
-      },
-      error: (xhr, status, err) => {
-        console.error('fail to fetch data');
-      }
-
-    })
-
+drawMovies = (arg) => {
+  var ar = []
+  arg.forEach(movie =>
+    ar.push(<Movie key = {movie.id} movie={movie}>asd</Movie>)
+    
+  )
+  return ar
 }
 
   render() {
-    console.log(this.props)
+    console.log(this.props.movies)
     return (
       <div className="App">
         <GlobalStyle/>
@@ -122,18 +73,22 @@ class App extends Component {
         
         
         <Wrapper>
-        <input onChange={this.handleSearch} type="text"/>
-          {this.state.rows}
+          <input onKeyDown={this.handeKeyDown} type="text"/>
+        {this.drawMovies(this.props.movies)}
+        {this.props.movieMessage}
         </Wrapper>
+        
       </div>
     );
   }
 }
 
-
 const mapStateToProps = state => {
   return {
-    isLogged: state.isLogged
+    isLogged: state.login.isLogged,
+    movies: state.movies.movies,
+    movieMessage: state.movies.message
+
   }
 }
 
@@ -141,7 +96,15 @@ const mapDispatchToProps = dispatch => {
   return {
     setLogin: (bool) => {
       dispatch({type: 'LOGIN', isLogged: bool })
+    },
+    queryMovies: (data) => {
+      dispatch({type: 'QUERY_MOVIES', data: data })
+    },
+    queryProblem: (message) => {
+      dispatch({type: 'CLER_MOVIES_QUERY', message: message })
     }
+
+    
   }
 }
 
